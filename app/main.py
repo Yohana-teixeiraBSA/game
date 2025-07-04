@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from app.dto.mongo.transaction_dto import TransactionDTO
+from app.dto.mongo.transaction_type_dto import TransactionTypeDTO
 from app.dto.websockets.balance_dto import BalanceDTO
 from app.dto.websockets.session_dto import SessionDTO
 from app.redis_client import redis
@@ -85,10 +86,11 @@ async def slot_websocket(websocket: WebSocket, player_id: str):
                         mongo_balance -= vbet.bet_amount 
         
                 saldo_final= mongo_balance  
-                await PlayerService.update_balance(player_id, mongo_balance)
 
-                transaction = TransactionDTO(player_id = player_id, balance = mongo_balance)
+                transaction = TransactionDTO(player_id = player_id, balance = player_balance, new_balance = saldo_final, win = bet_amount, bet = bet_amount  ,type= TransactionTypeDTO.BET)
                 await TransactionService.create_transaction(transaction)
+                
+                await PlayerService.update_balance(player_id, saldo_final)
 
                 await RedisRepository.set_session(player_id, session)
                 # Envia resultado só para o jogador que apostou

@@ -17,5 +17,5 @@ class MongoPlayerRepository:
     async def update_player(player_id: str, new_balance: int):
         await collection.update_one(
             {"player_id": player_id},
-            {"$set":{"balance": new_balance}}
+            {"$set":{"new_balance": new_balance}}
         )
