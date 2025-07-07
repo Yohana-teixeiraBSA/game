@@ -9,7 +9,8 @@ def validate_bet(bet_amount, player_balance):
 
     if bet_amount <= 0:
         raise ValueError("Aposta inválida: valor não pode ser zero ou negativo.")
-
+    if bet_amount < 5:
+        raise ValueError("Aposta mínima: 5 reais.")
     if bet_amount > player_balance:
         raise ValueError ("Aposta inválida: o valor da aposta não pode ser maior que o seu saldo!")
     
