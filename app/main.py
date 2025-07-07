@@ -31,7 +31,7 @@ async def slot_websocket(websocket: WebSocket, player_id: str):
         
         error_dto = ErrorDTO(
             error = "Já existe uma sessão ativa para esse jogador.",
-            session = existing_session.model_dump() #-> com esse comando pego os dados contidos no existing_session e retorno um JSON;
+            # session = existing_session.model_dump() -> com esse comando pego os dados contidos no existing_session e retorno um JSON;
         )
         await websocket.send_json(error_dto.model_dump())
         await websocket.close()
@@ -80,16 +80,43 @@ async def slot_websocket(websocket: WebSocket, player_id: str):
                 result = start_slot_round()
                 win = check_win(result)
 
-                if win:
-                        mongo_balance += vbet.bet_amount                             
-                else:
-                        mongo_balance -= vbet.bet_amount 
-        
-                saldo_final= mongo_balance  
+                simulate_error = data.get("simulate_error")
+                refound_value = False
+                try:
+                    if simulate_error:
+                        raise Exception("Simulando desconexão ou erro no meio do processo.")
+                    if win:
+                        mongo_balance += int(vbet.bet_amount * 0.5)
+                        tx_type = TransactionTypeDTO.WIN
+                        win_value = mongo_balance - player_balance 
+                    else:
+                        mongo_balance -= vbet.bet_amount
+                        tx_type = TransactionTypeDTO.LOSS
+                        win_value = None
 
-                transaction = TransactionDTO(player_id = player_id, balance = player_balance, new_balance = saldo_final, win = bet_amount, bet = bet_amount  ,type= TransactionTypeDTO.BET)
+                    
+                except Exception as e:
+                    # Erro simulado → aplica refound
+                    mongo_balance += int(vbet.bet_amount * 0.5)
+                    tx_type = TransactionTypeDTO.REFOUND
+                    win_value = None
+                    refound_value = True
+                    print(f"⚠️ Refound aplicado por erro: {str(e)}")
+
+                saldo_final= mongo_balance
+
+                transaction = TransactionDTO(
+                    player_id=player_id,
+                    balance=player_balance,
+                    new_balance= saldo_final,
+                    win=win_value,
+                    bet=vbet.bet_amount,
+                    refound= (saldo_final - player_balance if refound_value else None),
+                    type=tx_type
+                )
                 await TransactionService.create_transaction(transaction)
-                
+                print("🧾 Transação salva:", transaction.model_dump())
+                       
                 await PlayerService.update_balance(player_id, saldo_final)
 
                 await RedisRepository.set_session(player_id, session)

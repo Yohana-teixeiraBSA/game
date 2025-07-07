@@ -7,6 +7,6 @@ class TransactionDTO(BaseModel):
     balance: int = 1000
     new_balance: int
     bet: int
-    win: int
+    win: int | None = None
     refound: int | None = None
     type: TransactionTypeDTO
