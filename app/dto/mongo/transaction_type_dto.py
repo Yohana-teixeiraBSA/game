@@ -4,6 +4,6 @@ class TransactionTypeDTO(str,Enum):
     BET = "bet"
     WIN = "win"
     LOSS = "loss"
-    REFOUND = "refound"
+    REFUND = "refund"
     
     

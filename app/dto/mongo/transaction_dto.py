@@ -8,5 +8,5 @@ class TransactionDTO(BaseModel):
     new_balance: int
     bet: int
     win: int | None = None
-    refound: int | None = None
+    refund: int | None = None
     type: TransactionTypeDTO

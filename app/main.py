@@ -81,28 +81,44 @@ async def slot_websocket(websocket: WebSocket, player_id: str):
                 win = check_win(result)
 
                 simulate_error = data.get("simulate_error")
-                refound_value = False
+                refund_value = False
+                
                 try:
                     if simulate_error:
                         raise Exception("Simulando desconexão ou erro no meio do processo.")
+                    
                     if win:
-                        mongo_balance += int(vbet.bet_amount * 0.5)
+                        mongo_balance -= vbet.bet_amount
+                        mongo_balance += int(vbet.bet_amount * 1.5)
                         tx_type = TransactionTypeDTO.WIN
-                        win_value = mongo_balance - player_balance 
+                        win_value = int(vbet.bet_amount * 0.5)
                     else:
                         mongo_balance -= vbet.bet_amount
                         tx_type = TransactionTypeDTO.LOSS
                         win_value = None
-
-                    
                 except Exception as e:
-                    # Erro simulado → aplica refound
-                    mongo_balance += int(vbet.bet_amount * 0.5)
-                    tx_type = TransactionTypeDTO.REFOUND
+                    mongo_balance -= vbet.bet_amount  
+                    transaction = TransactionDTO(
+                        player_id=player_id,
+                        balance=player_balance,
+                        new_balance=mongo_balance,
+                        win=None,
+                        bet=vbet.bet_amount,
+                        refund=None,
+                        type=TransactionTypeDTO.BET
+                    )
+                    await TransactionService.create_transaction(transaction)
+                    print("🧾 Transação de aposta salva:", transaction.model_dump())
+                    await PlayerService.update_balance(player_id, mongo_balance)
+                  
+                    # Erro simulado: aplica refound
+                    mongo_balance += vbet.bet_amount
+                    tx_type = TransactionTypeDTO.REFUND
                     win_value = None
-                    refound_value = True
+                    refund_value = True
                     print(f"⚠️ Refound aplicado por erro: {str(e)}")
 
+                print("Valor apostado ajustado:", mongo_balance)
                 saldo_final= mongo_balance
 
                 transaction = TransactionDTO(
@@ -111,17 +127,16 @@ async def slot_websocket(websocket: WebSocket, player_id: str):
                     new_balance= saldo_final,
                     win=win_value,
                     bet=vbet.bet_amount,
-                    refound= (saldo_final - player_balance if refound_value else None),
+                    refund= (vbet.bet_amount if refund_value else None),
                     type=tx_type
                 )
                 await TransactionService.create_transaction(transaction)
-                print("🧾 Transação salva:", transaction.model_dump())
-                       
+                print("🧾 Transação salva:", transaction.model_dump())      
                 await PlayerService.update_balance(player_id, saldo_final)
 
                 await RedisRepository.set_session(player_id, session)
                 # Envia resultado só para o jogador que apostou
-                game_result = GameResultDTO(type = None, result = result, win = win,new_balance = saldo_final,message = "Você ganhou!" if win else "Você perdeu." )
+                game_result = GameResultDTO(type = tx_type, result = result, win = win,new_balance = saldo_final,message = "Você ganhou!" if win else "Você perdeu." )
                 await ws_service.send_game_result(game_result)
 
                 if saldo_final <= 0:
@@ -151,6 +166,3 @@ async def slot_websocket(websocket: WebSocket, player_id: str):
             existing_session.is_logged = False
             print("Sessão existente:", existing_session.model_dump() if existing_session else "Nenhuma")
             await RedisRepository.set_session(player_id, existing_session)
-            
-
-        
