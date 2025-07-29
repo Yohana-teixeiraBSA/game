@@ -2,15 +2,11 @@ from pydantic import BaseModel
 
 from app.dto.mongo.transaction_type_dto import TransactionTypeDTO
 
-class TransactionDTO(BaseModel):
+class TransactionBET(BaseModel):
     player_id: str
     balance: int = 1000
     new_balance: int
     bet: int
-    win: int | None = None
-    refund: int | None = None
-    type: TransactionTypeDTO
-    bet_id: str | None = None
     win_id: str | None = None
-
-    
+    refund_id: str | None = None
+    type: TransactionTypeDTO
