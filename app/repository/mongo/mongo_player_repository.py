@@ -15,7 +15,8 @@ class MongoPlayerRepository:
 
     @staticmethod
     async def update_player(player_id: str, new_balance: int):
-        await collection.update_one(
+        update_result = await collection.update_one(
             {"player_id": player_id},
             {"$set":{"balance": new_balance}}
         )
+        return update_result
