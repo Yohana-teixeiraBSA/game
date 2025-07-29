@@ -24,4 +24,6 @@ class WebSocketService():
 
     async def send_balance(self, balance: BalanceDTO):
         await self.__websocket.send_json(balance.model_dump())
-       
+        
+    async def send_grid(self, grid_2d: list[list[str]]):
+        await self.__websocket.send_json({"grid": grid_2d})
