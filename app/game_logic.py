@@ -1,26 +1,85 @@
+import json
 import random
+from app.dto.websockets.game_session_status import GameSessionStatus
+from app.dto.websockets.player_dto import PlayerDTO
+from app.dto.websockets.session_dto import SessionDTO
 from app.redis_client import redis
-from app.models import BetModel
 
-SYMBOLS = ["🍒", "7️⃣", "⭐", "🔔", "🍋"]
+SYMBOL_MINE = "💣"
+SYMBOL_DIAMOND =  "💎"
+GRID_SIZE = 25
 
-def validate_bet(bet_amount, player_balance):
-    bet_model = BetModel(bet_amount=bet_amount, player_balance=player_balance)
+async def start_grid_game(player_dto: PlayerDTO, num_mines: int) -> list[str]:
+    if  num_mines < 1 or num_mines > 20:
+        raise ValueError("Quantidade de minas deve estar entre 1 e 20.")
 
-    if bet_amount <= 0:
-        raise ValueError("Aposta inválida: valor não pode ser zero ou negativo.")
-    if bet_amount < 5:
-        raise ValueError("Aposta mínima: 5 reais.")
-    if bet_amount > player_balance:
-        raise ValueError ("Aposta inválida: o valor da aposta não pode ser maior que o seu saldo!")
+    grid = [SYMBOL_MINE] * num_mines + [SYMBOL_DIAMOND] * (GRID_SIZE - num_mines)
+    random.shuffle(grid)
+
+    session = SessionDTO(
+        player_id=player_dto.player_id,
+        grid=grid,
+        status=GameSessionStatus.PLAYING
+    )
+
+    await set_session(session = session)
+
+    return grid
+
+
+async def reveal_position(player_dto:PlayerDTO, index:int) -> str:
+    session = await get_session(player_dto.player_id)
+
+    if not session:
+        raise ValueError("Nenhuma grade ativa encontrada. Inicie uma rodada primeiro.")
+
+    grid = session.grid
+    symbol = grid[index]
     
-    return  bet_model
+    return symbol
 
-def start_slot_round():
-    return [random.choice(SYMBOLS) for _ in range(3)]
+def check_win(symbol: str) -> bool:
+    return symbol == "💎"
 
-def check_win(result):
-    return len(set(result)) == 1
+def mask_grid(session: SessionDTO) -> list[str]:
+    revealed_indexes = session.revealed
+    grid = session.grid
+    return [
+        symbol if i in revealed_indexes else "x"
+        for i, symbol in enumerate(grid)
+    ]
+
+@staticmethod
+async def get_session(session: SessionDTO) -> SessionDTO | None :
+    key = f"{session.player_id}"
+    session_data = await redis.get(key)
+    if session_data:
+        try:
+            session_dict = json.loads(session_data)
+            print("session_dict:", session_dict)
+            if "status" not in session_dict:
+                session_dict["status"] = GameSessionStatus.LOBBY
+                print("⚠️ Inserido fallback status=LOBBY")
+            return SessionDTO(**session_dict)
+        except Exception as e:
+            print("Erro ao carregar sessão:", e)
+            return None
+    return None
+
+@staticmethod
+async def set_session(session: SessionDTO | None):
+    key = f"{session.player_id}"
+    print("Sessão salva:", session)
+    await redis.set(key, json.dumps(session.model_dump()))
+
+
+async def generate_current_grid_view(session_player: SessionDTO) -> list[list[str]]:
+    session =  await get_session(session_player.player_id)
+    if not session:
+        return [["x"] * 5 for _ in range(5)]
+    current_view = session.revealed
+    grid_2d = [current_view[i:i+5] for i in range(0, 25, 5)]
+    return grid_2d
 
 async def broadcast_result(result, channel="slot_channel"):
     message = str(result)
