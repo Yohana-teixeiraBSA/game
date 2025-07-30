@@ -6,6 +6,9 @@ from app.dto.websockets.player_dto import PlayerDTO
 import redis.asyncio as redis
 
 class WebSocketService():
+    # Padrão mais utilizado para injeção de dependência
+    # O WebSocketService é inicializado com o WebSocket e o cliente Redis
+    # e pode ser usado para enviar mensagens de erro, resultados de jogos, etc.
     def __init__(self, websocket: WebSocket, redis_client):
         self.__websocket = websocket
         self.__redis = redis

@@ -1,4 +1,3 @@
-from turtle import update
 from fastapi import WebSocket
 from app.dto.mongo.transaction_bet import TransactionBET
 from app.dto.mongo.transaction_type_dto import TransactionTypeDTO
@@ -16,7 +15,7 @@ from app.test_error import setup_logger
 logger = setup_logger("handle-bet")
 
 class HandleBet:
-    async def handle_bet(player_id, player_balance, vbet: BetDTO, mongo_balance, websocket: WebSocket):
+    async def handle_bet(player_id, player_balance, vbet: BetDTO, mongo_balance):
         
         '''
         logger.error("Mongo Balance", mongo_balance)
@@ -26,8 +25,8 @@ class HandleBet:
             await ws_service.send_error(ErrorDTO(error="Você já tem uma partida ativa."))
             return
         '''
-        session = SessionDTO(player_id=player_id)
-        await get_session(session=session)
+      
+        await get_session(player_id= player_id)
         grid = await start_grid_game(
             PlayerDTO(player_id=player_id, type="Saldo", balance=mongo_balance),
             num_mines=vbet.num_mines
@@ -42,6 +41,7 @@ class HandleBet:
             status= GameSessionStatus.PLAYING
         )
         await set_session(session=session)
+        print(session)
 
         if vbet.num_mines is None or not (1 <= vbet.num_mines < 21):
                 await WebSocketService.send_error(ErrorDTO(error="Quantidade de minas inválidas. Escolha entre 1 e 20."))
@@ -58,6 +58,7 @@ class HandleBet:
         bet_id =await TransactionService.create_transaction(transaction)
         session.bet_id = bet_id
         await set_session(session=session)
+        print(f"Session handle bet: {session}")
         player_balance = PlayerDTO(player_id=player_id, balance=mongo_balance)
         await PlayerService.update_balance(player=player_balance)
         return mongo_balance

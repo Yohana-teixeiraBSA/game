@@ -1,4 +1,5 @@
 import redis
+from app.dto.mongo.transaction_dto import TransactionDTO
 from app.dto.mongo.transaction_win import TransactionWIN
 from app.dto.mongo.transaction_type_dto import TransactionTypeDTO
 from app.dto.websockets.error_dto import ErrorDTO
@@ -16,6 +17,7 @@ class HandleCashout:
    
     async def handle_cashout(player_id:str, websocket, session: SessionDTO, mongo_balance):
         ws_service = WebSocketService(websocket, redis)
+        mongo_transaction_repository = MongoTransactionRepository()
 
         session = await get_session(player_id)
         if session.status != GameSessionStatus.PLAYING:
@@ -48,10 +50,17 @@ class HandleCashout:
             bet_id=session.bet_id   
         )
         win_id = await TransactionService.create_transaction(transaction)
-        await MongoTransactionRepository.update_transaction_with_win_id(session.bet_id, win_id)
+        update_transaction = TransactionDTO(
+            bet_id=session.bet_id,
+            win_id=win_id
+        )
+        await mongo_transaction_repository.update_transaction_with_win_id(update_transaction)
         player_update_balance = PlayerDTO(player_id=player_id, balance=mongo_balance + cashout_win)
         await PlayerService.update_balance(player=player_update_balance)
-        await set_session(player_id, session)
+        session.is_logged = False
+        await set_session(session)
+        await websocket.close()
+        return "closed"
         
        
     

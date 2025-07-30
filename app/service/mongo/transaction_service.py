@@ -6,8 +6,11 @@ class TransactionService:
 
     @staticmethod
     async def create_transaction(transaction_dto: TransactionDTO):
-        return await MongoTransactionRepository.insert_transaction(transaction_dto)
+        mongo_repo = MongoTransactionRepository()
+        return await mongo_repo.insert_transaction(transaction_dto)
 
     @staticmethod
     async def get_player_transactions(player: PlayerDTO):
-        return await MongoTransactionRepository.get_transactions_player(player.player_id)
+        mongo_repo = MongoTransactionRepository()
+        return await mongo_repo.get_transactions_player(player.player_id)
+

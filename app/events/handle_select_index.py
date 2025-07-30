@@ -1,12 +1,12 @@
 import redis
 from fastapi import WebSocket
+from app.dto.mongo.transaction_dto import TransactionDTO
 from app.dto.mongo.transaction_type_dto import TransactionTypeDTO
 from app.dto.mongo.transaction_win import TransactionWIN
 from app.dto.websockets.error_dto import ErrorDTO
 from app.dto.websockets.game_result_dto import GameResultDTO
 from app.dto.websockets.game_session_status import GameSessionStatus
 from app.dto.websockets.player_dto import PlayerDTO
-from app.dto.websockets.session_dto import SessionDTO
 from app.game_logic import check_win, generate_current_grid_view, get_session, set_session
 from app.repository.mongo.mongo_transaction_repository import MongoTransactionRepository
 from app.service.mongo.player_service import PlayerService
@@ -19,12 +19,12 @@ class HandleSelectIndex:
     async def handle_select_index(player_id: str, index: int, websocket: WebSocket):
         
         ws_service = WebSocketService(websocket, redis)
+        mongo_transaction_repository = MongoTransactionRepository()
         player = PlayerDTO(player_id=player_id, balance=0)
-        mongo_balance = (await PlayerService.get_or_create_player(player=player))["balance"]
+        mongo_balance = (await PlayerService.get_or_create_player(player=player))
 
-        session = SessionDTO(player_id=player_id)
-        await get_session(session=session)
-
+        session = await get_session(player_id=player_id)
+        
         if session.status != GameSessionStatus.PLAYING:
             await ws_service.send_error(ErrorDTO(error="Partida não está ativa. Faça uma nova aposta."))
             return
@@ -49,6 +49,9 @@ class HandleSelectIndex:
         
         win = check_win(symbol)
         win_value = 0
+        
+        player_dto = await PlayerService.get_or_create_player(player=player)
+        mongo_balance = player_dto.balance
         player_balance = mongo_balance
         
         if symbol == "💣":
@@ -69,7 +72,11 @@ class HandleSelectIndex:
                 type=tx_type
             )
             win_id = await TransactionService.create_transaction(transaction)
-            await MongoTransactionRepository.update_transaction_with_win_id(session.bet_id, win_id)
+            update_transaction = TransactionDTO(
+                bet_id=session.bet_id,
+                win_id=win_id
+            )
+            await mongo_transaction_repository.update_transaction_with_win_id(update_transaction)
             player_update_balance = PlayerDTO(player_id=player_id, balance=mongo_balance)
             await PlayerService.update_balance(player=player_update_balance)
             session.is_logged = False
@@ -83,9 +90,9 @@ class HandleSelectIndex:
                 message="Jogo finalizado."
             )) 
             updated_grid = await generate_current_grid_view(player_id)
-            await ws_service.send_grid(updated_grid)  
+            await ws_service.send_grid(updated_grid) 
             await websocket.close()  
-            return session 
+            return "closed" 
         else:
             tx_type = TransactionTypeDTO.WIN
             win_this_round = int(session.bet_amount * 0.1)

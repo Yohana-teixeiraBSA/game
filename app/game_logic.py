@@ -1,7 +1,6 @@
 import json
 import random
 from app.dto.websockets.game_session_status import GameSessionStatus
-from app.dto.websockets.player_dto import PlayerDTO
 from app.dto.websockets.session_dto import SessionDTO
 from app.redis_client import redis
 
@@ -9,7 +8,7 @@ SYMBOL_MINE = "💣"
 SYMBOL_DIAMOND =  "💎"
 GRID_SIZE = 25
 
-async def start_grid_game(player_dto: PlayerDTO, num_mines: int) -> list[str]:
+async def start_grid_game(session: SessionDTO, num_mines: int) -> list[str]:
     if  num_mines < 1 or num_mines > 20:
         raise ValueError("Quantidade de minas deve estar entre 1 e 20.")
 
@@ -17,7 +16,7 @@ async def start_grid_game(player_dto: PlayerDTO, num_mines: int) -> list[str]:
     random.shuffle(grid)
 
     session = SessionDTO(
-        player_id=player_dto.player_id,
+        player_id=session.player_id,
         grid=grid,
         status=GameSessionStatus.PLAYING
     )
@@ -27,8 +26,8 @@ async def start_grid_game(player_dto: PlayerDTO, num_mines: int) -> list[str]:
     return grid
 
 
-async def reveal_position(player_dto:PlayerDTO, index:int) -> str:
-    session = await get_session(player_dto.player_id)
+async def reveal_position(player_id:str, index:int) -> SessionDTO | None:
+    session = await get_session(player_id)
 
     if not session:
         raise ValueError("Nenhuma grade ativa encontrada. Inicie uma rodada primeiro.")
@@ -50,8 +49,8 @@ def mask_grid(session: SessionDTO) -> list[str]:
     ]
 
 @staticmethod
-async def get_session(session: SessionDTO) -> SessionDTO | None :
-    key = f"{session.player_id}"
+async def get_session(player_id: str) -> SessionDTO | None :
+    key = f"{player_id}"
     session_data = await redis.get(key)
     if session_data:
         try:
@@ -73,8 +72,8 @@ async def set_session(session: SessionDTO | None):
     await redis.set(key, json.dumps(session.model_dump()))
 
 
-async def generate_current_grid_view(session_player: SessionDTO) -> list[list[str]]:
-    session =  await get_session(session_player.player_id)
+async def generate_current_grid_view(player_id: str) -> list[list[str]]:
+    session =  await get_session(player_id)
     if not session:
         return [["x"] * 5 for _ in range(5)]
     current_view = session.revealed

@@ -6,26 +6,24 @@ import json
 logger = setup_logger("Redis Repository")
 
 class RedisRepository:
-    @staticmethod
-    async def get_balance(session: SessionDTO) -> int:
+    def __init__ (self, redis_client):
+        self.redis = redis_client
+
+    async def get_balance(self, session: SessionDTO) -> int:
         key = f"balance:{session.player_id}"
-        balance = await redis.get(key)
+        balance = await self.redis.get(key)
         return int(balance) if balance else 0
     
-    @staticmethod
-    async def set_balance(session: SessionDTO, value: int):
+    async def set_balance(self, session: SessionDTO, value: int):
         key = f"balance:{session.player_id}"
-        await redis.set(key, value)
+        await self.redis.set(key, value)
 
-    @staticmethod
-    async def update_ranking(session: SessionDTO, value: int):
-        await redis.zadd("players_balance", {session.player_id: value})
-        
+    async def update_ranking(self, session: SessionDTO, value: int):
+        await self.redis.zadd("players_balance", {session.player_id: value})
 
-    @staticmethod
-    async def get_is_logged(session: SessionDTO) -> SessionDTO | None :
+    async def get_is_logged(self, session: SessionDTO) -> SessionDTO | None :
         key = f"{session.player_id}"
-        session_data = await redis.get(key)
+        session_data = await self.redis.get(key)
         print("entrou no session_data",session_data)
 
         if session_data:
@@ -37,16 +35,14 @@ class RedisRepository:
                 return None
         return None
 
-    @staticmethod
-    async def set_is_logged( session:SessionDTO | None):
+
+    async def set_is_logged( self, session:SessionDTO | None):
         key = f"{session.player_id}"
         value = json.dumps({"is_logged": session.is_logged})
-        await redis.set(key, value)
-    
-    @staticmethod
-    async def delete_session(session: SessionDTO):
-        await redis.delete(f"{session.player_id}")
+        await self.redis.set(key, value)
 
+    async def delete_session(self, session: SessionDTO):
+        await self.redis.delete(f"{session.player_id}")
 
         
     
