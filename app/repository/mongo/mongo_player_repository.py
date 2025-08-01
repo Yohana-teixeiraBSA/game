@@ -6,7 +6,6 @@ collection = db["players"]
 class MongoPlayerRepository:
 
     def __init__(self, collection=collection):
-
         self.collection = collection
 
     async def get_player(self, player: PlayerDTO) -> PlayerDTO | None:

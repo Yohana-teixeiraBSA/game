@@ -1,6 +1,5 @@
 from app.dto.websockets.session_dto import SessionDTO
 from app.test_error import setup_logger
-from app.redis_client import redis
 import json
 
 logger = setup_logger("Redis Repository")

@@ -1,7 +1,6 @@
-
 from enum import Enum
 
-class GameSessionStatus(str, Enum):
+class GameSessionEnum(str, Enum):
     LOBBY = "lobby"
     PLAYING = "playing"
     FINISHED = "finished"

@@ -1,6 +1,6 @@
 import json
 import random
-from app.dto.websockets.game_session_status import GameSessionStatus
+from app.dto.websockets.game_session_enum import GameSessionEnum
 from app.dto.websockets.session_dto import SessionDTO
 from app.redis_client import redis
 
@@ -17,8 +17,11 @@ async def start_grid_game(session: SessionDTO, num_mines: int) -> list[str]:
 
     session = SessionDTO(
         player_id=session.player_id,
+        casino=session.casino,
+        device=session.device,
+        currency=session.currency,
         grid=grid,
-        status=GameSessionStatus.PLAYING
+        status=GameSessionEnum.PLAYING
     )
 
     await set_session(session = session)
@@ -57,7 +60,7 @@ async def get_session(player_id: str) -> SessionDTO | None :
             session_dict = json.loads(session_data)
             print("session_dict:", session_dict)
             if "status" not in session_dict:
-                session_dict["status"] = GameSessionStatus.LOBBY
+                session_dict["status"] = GameSessionEnum.LOBBY
                 print("⚠️ Inserido fallback status=LOBBY")
             return SessionDTO(**session_dict)
         except Exception as e:

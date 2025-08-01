@@ -4,13 +4,12 @@ from app.repository.mongo.mongo_transaction_repository import MongoTransactionRe
 
 class TransactionService:
 
-    @staticmethod
-    async def create_transaction(transaction_dto: TransactionDTO):
-        mongo_repo = MongoTransactionRepository()
-        return await mongo_repo.insert_transaction(transaction_dto)
+    def __init__(self, repository=None):
+        self.repository = repository or MongoTransactionRepository()
 
-    @staticmethod
-    async def get_player_transactions(player: PlayerDTO):
-        mongo_repo = MongoTransactionRepository()
-        return await mongo_repo.get_transactions_player(player.player_id)
+    async def create_transaction(self, transaction_dto: TransactionDTO):
+        return await self.repository.insert_transaction(transaction_dto)
+
+    async def get_player_transactions(self, player: PlayerDTO):
+        return await self.repository.get_transactions_player(player)
 
