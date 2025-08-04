@@ -13,7 +13,7 @@ from app.events.handle_bet import HandleBet
 from app.events.handle_cashout import HandleCashout
 from app.events.handle_select_index import HandleSelectIndex
 from app.repository.mongo.mongo_transaction_repository import MongoTransactionRepository
-from app.routes import game_history
+from app.routes import game_history, paytable
 from app.test_error import setup_logger
 from app.redis_client import redis
 from app.game_logic import  get_session, mask_grid, set_session
@@ -26,6 +26,7 @@ from app.service.mongo.player_service import PlayerService
 app = FastAPI()
 
 app.include_router(game_history.router)
+app.include_router(paytable.router)
 
 logger = setup_logger("Main")
 
